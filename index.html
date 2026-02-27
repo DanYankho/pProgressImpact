@@ -39,10 +39,12 @@
       inset: 0;
       overflow: hidden;
     }
+
+    /* ✅ FIX: closing brace was missing here */
     svg {
       width: 100%; height: 100%;
       display: block;
-    
+    }
 
     /* ── DISTRICT PATHS ── */
     .district {
@@ -52,10 +54,10 @@
       transition: stroke-width 120ms ease, opacity 300ms ease;
       paint-order: stroke;
     }
-    .district:hover { stroke-width: 1px; }
+    .district:hover { stroke-width: 5px; }
     .district.focused {
       stroke: var(--navy);
-      stroke-width: 3px;
+      stroke-width: 1px;
       filter: drop-shadow(0 2px 14px rgba(60,191,169,0.55));
     }
     .district.faded {
@@ -500,17 +502,14 @@
   //  HELPERS
   // ─────────────────────────────────────────────
 
-  // Normalise district name for matching (uppercase, trim)
   function norm(s) {
     return (s || '').trim().toUpperCase().replace(/\s+/g, ' ');
   }
 
-  // Title-case a string e.g. "nkhata bay" → "Nkhata Bay"
   function toTitleCase(s) {
     return s.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   }
 
-  // Extract district name from GeoJSON feature
   function featName(feat) {
     const p = feat.properties || {};
     for (const k of ['NAME_1','NAME','DISTRICT','Dist_Name','DISTRICT NAME','DISTNAME','DIST_NAME','district','District','name']) {
@@ -519,18 +518,15 @@
     return '';
   }
 
-  // Unique stable ID for a feature
   function distId(d) {
     const p = d.properties || {};
     return p.id || p.NAME_1 || p.DISTRICT || p.name || JSON.stringify(p).slice(0, 40);
   }
 
-  // Fill colour — purple if has data, grey if not
   function districtFill(d) {
     return impactData[norm(featName(d))] ? '#6067AF' : '#d3d6d9';
   }
 
-  // Format numbers with commas
   function fmt(n) {
     return Number(n).toLocaleString();
   }
@@ -567,7 +563,7 @@
   // ─────────────────────────────────────────────
   //  STATE
   // ─────────────────────────────────────────────
-  let impactData  = {};   // NORMALISED district name → { col: value }
+  let impactData  = {};
   let geoData     = null;
   let districtSel = null;
   let labelSel    = null;
@@ -586,7 +582,6 @@
 
     geoData = geo;
 
-    // Parse CSV into impactData and running totals
     const totals = {};
     IMPACT_COLUMNS.forEach(c => totals[c.key] = 0);
 
@@ -602,7 +597,6 @@
       impactData[distKey] = record;
     });
 
-    // Max value per column for proportional bar widths
     const maxVals = {};
     IMPACT_COLUMNS.forEach(c => {
       maxVals[c.key] = Math.max(...Object.values(impactData).map(d => d[c.key] || 0));
@@ -666,7 +660,6 @@
       .attr('d', path)
       .attr('fill', d => districtFill(d))
       .on('mouseover', function (event, d) {
-        // Don't highlight faded districts when one is selected
         if (selectedId && selectedId !== distId(d)) return;
         if (selectedId !== distId(d)) d3.select(this).attr('fill', '#3CBFA9');
       })
@@ -680,8 +673,8 @@
       });
 
     // Labels
-    // — Districts WITH impact data → full title-case name (e.g. "Kasungu")
-    // — Districts WITHOUT impact  → abbreviation from DISTRICT_LABELS table above
+    // — Districts WITH impact → full title-case name
+    // — Districts WITHOUT impact → abbreviation from DISTRICT_LABELS
     labelSel = mapGroup.append('g').attr('class', 'district-labels')
       .selectAll('text').data(districts).enter()
       .append('text')
@@ -694,25 +687,18 @@
       .text(d => {
         const normName  = norm(featName(d));
         const hasImpact = !!impactData[normName];
-        if (hasImpact) {
-          // Full title-case name for districts we've reached
-          return toTitleCase(featName(d));
-        }
-        // Short abbreviation for unreached districts
+        if (hasImpact) return toTitleCase(featName(d));
         return DISTRICT_LABELS[normName] || normName.substring(0, 3);
       });
 
-    // Click SVG background → reset
     svg.on('click', event => {
       if (event.target.tagName.toLowerCase() === 'svg') resetView();
     });
 
-    // ESC key → reset
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') resetView();
     });
 
-    // Window resize → reproject
     let resizeTimeout;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimeout);
@@ -737,7 +723,6 @@
   function selectDistrict(feat) {
     selectedId = distId(feat);
 
-    // Dramatic zoom (2400ms) — offset right to leave room for the panel
     const [[x0, y0], [x1, y1]] = path.bounds(feat);
     const dx = x1 - x0, dy = y1 - y0;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -750,7 +735,6 @@
       d3.zoomIdentity.translate(tx, ty).scale(scale)
     );
 
-    // Fade all other districts; highlight + raise selected
     districtSel
       .classed('faded',   d => distId(d) !== selectedId)
       .classed('focused', d => distId(d) === selectedId)
@@ -758,11 +742,9 @@
       .attr('fill', '#3CBFA9')
       .raise();
 
-    // Hide labels and legend
     labelSel.classed('hidden', true);
     legend.classList.add('hidden');
 
-    // Populate and reveal district panel
     const rawName  = featName(feat);
     const normName = norm(rawName);
     renderDistrictPanel(rawName, impactData[normName], window.__maxVals);
@@ -825,20 +807,16 @@
   function resetView() {
     selectedId = null;
 
-    // Smooth zoom out (1800ms)
     svg.transition().duration(1800).call(zoom.transform, d3.zoomIdentity);
 
-    // Restore all districts
     districtSel
       .classed('faded', false)
       .classed('focused', false)
       .attr('fill', d => districtFill(d));
 
-    // Restore labels and legend
     labelSel.classed('hidden', false);
     legend.classList.remove('hidden');
 
-    // Swap panels
     totalPanel.classList.remove('hidden');
     distPanel.classList.remove('visible');
     escHint.classList.remove('visible');
