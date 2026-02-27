@@ -42,20 +42,20 @@
     svg {
       width: 100%; height: 100%;
       display: block;
-    }
+    
 
     /* ── DISTRICT PATHS ── */
     .district {
       stroke: #333;
-      stroke-width: 5px;
+      stroke-width: 2px;
       cursor: pointer;
       transition: stroke-width 120ms ease, opacity 300ms ease;
       paint-order: stroke;
     }
-    .district:hover { stroke-width: 2px; }
+    .district:hover { stroke-width: 1px; }
     .district.focused {
       stroke: var(--navy);
-      stroke-width: 1px;
+      stroke-width: 3px;
       filter: drop-shadow(0 2px 14px rgba(60,191,169,0.55));
     }
     .district.faded {
