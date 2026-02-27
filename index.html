@@ -49,16 +49,16 @@
     /* ── DISTRICT PATHS ── */
     .district {
       stroke: #333;
-      stroke-width: 2px;
+      stroke-width: 3px;
       cursor: pointer;
       transition: stroke-width 120ms ease, opacity 300ms ease;
       paint-order: stroke;
     }
-    .district:hover { stroke-width: 5px; }
+    .district:hover { stroke-width: 1px; }
     .district.focused {
       stroke: var(--navy);
-      stroke-width: 1px;
-      filter: drop-shadow(0 2px 14px rgba(60,191,169,0.55));
+      stroke-width: 2px;
+      filter: drop-shadow(0 8px 14px rgba(60,191,169,0.55));
     }
     .district.faded {
       opacity: 0.12;
