@@ -13,12 +13,12 @@
 
   <style>
     :root {
-      --navy:   #020244;
-      --purple: #6067AF;
-      --teal:   #3CBFA9;
-      --grey:   #d3d6d9;
+      --navy:     #020244;
+      --purple:   #6067AF;
+      --teal:     #3CBFA9;
+      --grey:     #d3d6d9;
       --panel-bg: rgba(255,255,255,0.96);
-      --tv-safe: 2.5%;
+      --tv-safe:  2.5%;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -120,7 +120,7 @@
       box-shadow: 0 8px 28px rgba(2,2,68,0.12);
       overflow: hidden;
       z-index: 70;
-      transition: opacity 280ms ease, transform 280ms ease;
+      transition: opacity 280ms ease, transform 280ms ease, visibility 280ms ease;
     }
     .panel-header {
       background: var(--navy);
@@ -153,6 +153,7 @@
       opacity: 0;
       transform: translateY(10px);
       pointer-events: none;
+      visibility: hidden;
     }
     #totals-panel .panel-header h2 {
       font-size: 20px;
@@ -201,12 +202,15 @@
       overflow-y: auto;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 280ms ease;
+      visibility: hidden;
+      transition: opacity 280ms ease, visibility 280ms ease;
     }
     #district-panel.visible {
       opacity: 1;
       pointer-events: auto;
+      visibility: visible;
     }
+    /* District name in panel header — large and prominent */
     #district-panel-title {
       font-size: 52px !important;
       line-height: 1.1 !important;
@@ -258,24 +262,24 @@
 
     /* Not reached message */
     .not-reached {
-      padding: 18px 14px;
+      padding: 24px 18px;
       text-align: center;
     }
     .not-reached .nr-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
+      font-size: 36px;
+      margin-bottom: 10px;
     }
     .not-reached p {
       margin: 0;
-      font-size: 13px;
+      font-size: 14px;
       color: #888;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .not-reached strong {
       display: block;
       color: var(--navy);
-      font-size: 14px;
-      margin-bottom: 4px;
+      font-size: 15px;
+      margin-bottom: 6px;
     }
 
     /* ── LEGEND ── */
@@ -298,7 +302,7 @@
     .legend-title {
       font-weight: 700;
       color: var(--navy);
-      margin-bottom: 7px;
+      margin-bottom: 8px;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -306,11 +310,12 @@
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 7px;
-      margin-bottom: 5px;
+      gap: 8px;
+      margin-bottom: 6px;
       color: #555;
       font-weight: 500;
     }
+    .legend-item:last-child { margin-bottom: 0; }
     .legend-swatch {
       width: 16px; height: 16px;
       border-radius: 4px;
@@ -324,18 +329,20 @@
       right: var(--tv-safe);
       background: var(--panel-bg);
       border-radius: 8px;
-      padding: 8px 14px;
-      font-size: 11px;
+      padding: 9px 16px;
+      font-size: 12px;
       color: #888;
       box-shadow: 0 3px 12px rgba(0,0,0,0.08);
       z-index: 70;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 280ms ease;
+      visibility: hidden;
+      transition: opacity 280ms ease, visibility 280ms ease;
     }
     #esc-hint.visible {
       opacity: 1;
       pointer-events: auto;
+      visibility: visible;
     }
 
     /* ── LOADING ── */
@@ -440,21 +447,70 @@
 <script>
 (async function () {
 
-  // ── COLUMNS we care about (order matters for display)
+  // ─────────────────────────────────────────────
+  //  DISTRICT LABEL LOOKUP
+  //  Districts WITH impact → show full name automatically (title case)
+  //  Districts WITHOUT impact → show abbreviation from this table
+  //  Edit any value here to fully customise a label
+  // ─────────────────────────────────────────────
+  const DISTRICT_LABELS = {
+    "BALAKA":       "BLK",
+    "BLANTYRE":     "BT",
+    "CHIKWAWA":     "CK",
+    "CHIRADZULU":   "CR",
+    "CHITIPA":      "CP",
+    "DEDZA":        "DZ",
+    "DOWA":         "DA",
+    "KARONGA":      "KA",
+    "KASUNGU":      "KU",
+    "LIKOMA":       "LK",
+    "LILONGWE":     "LL",
+    "MACHINGA":     "MA",
+    "MANGOCHI":     "MGC",
+    "MCHINJI":      "MC",
+    "MULANJE":      "MU",
+    "MWANZA":       "MW",
+    "MZIMBA":       "MZ",
+    "NENO":         "NN",
+    "NKHATA BAY":   "NB",
+    "NKHOTAKOTA":   "KK",
+    "NSANJE":       "NE",
+    "NTCHEU":       "NU",
+    "NTCHISI":      "NS",
+    "PHALOMBE":     "PE",
+    "RUMPHI":       "RU",
+    "SALIMA":       "SA",
+    "THYOLO":       "TO",
+    "ZOMBA":        "ZA",
+  };
+
+  // ─────────────────────────────────────────────
+  //  IMPACT COLUMNS
+  //  Edit label/color to customise the panel display
+  // ─────────────────────────────────────────────
   const IMPACT_COLUMNS = [
-    { key: "Young people Reached", label: "Young People Reached", color: "#020244" },
-    { key: "Girls",                label: "Girls",                color: "#6067AF" },
-    { key: "Boys",                 label: "Boys",                 color: "#3CBFA9" },
-    { key: "Young Women Can Do it Clubs", label: "Can Do It Clubs", color: "#5b9bd5" },
-    { key: "Self Help Groups",     label: "Self Help Groups",     color: "#e87750" },
+    { key: "Young people Reached",        label: "Young People Reached", color: "#020244" },
+    { key: "Girls",                        label: "Girls",                color: "#6067AF" },
+    { key: "Boys",                         label: "Boys",                 color: "#3CBFA9" },
+    { key: "Young Women Can Do it Clubs",  label: "Can Do It Clubs",      color: "#5b9bd5" },
+    { key: "Self Help Groups",             label: "Self Help Groups",     color: "#e87750" },
   ];
 
-  // Normalise district name for matching
+  // ─────────────────────────────────────────────
+  //  HELPERS
+  // ─────────────────────────────────────────────
+
+  // Normalise district name for matching (uppercase, trim)
   function norm(s) {
     return (s || '').trim().toUpperCase().replace(/\s+/g, ' ');
   }
 
-  // Extract district name from GeoJSON feature (try common property keys)
+  // Title-case a string e.g. "nkhata bay" → "Nkhata Bay"
+  function toTitleCase(s) {
+    return s.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+
+  // Extract district name from GeoJSON feature
   function featName(feat) {
     const p = feat.properties || {};
     for (const k of ['NAME_1','NAME','DISTRICT','Dist_Name','DISTRICT NAME','DISTNAME','DIST_NAME','district','District','name']) {
@@ -463,40 +519,56 @@
     return '';
   }
 
+  // Unique stable ID for a feature
+  function distId(d) {
+    const p = d.properties || {};
+    return p.id || p.NAME_1 || p.DISTRICT || p.name || JSON.stringify(p).slice(0, 40);
+  }
+
+  // Fill colour — purple if has data, grey if not
+  function districtFill(d) {
+    return impactData[norm(featName(d))] ? '#6067AF' : '#d3d6d9';
+  }
+
   // Format numbers with commas
   function fmt(n) {
     return Number(n).toLocaleString();
   }
 
-  // ── DOM refs
+  // ─────────────────────────────────────────────
+  //  DOM REFS
+  // ─────────────────────────────────────────────
   const mapRoot    = document.getElementById('map-root');
   const totalPanel = document.getElementById('totals-panel');
   const distPanel  = document.getElementById('district-panel');
   const escHint    = document.getElementById('esc-hint');
+  const legend     = document.getElementById('legend');
   const loading    = document.getElementById('loading');
 
-  // ── SVG setup
+  // ─────────────────────────────────────────────
+  //  SVG & PROJECTION SETUP
+  // ─────────────────────────────────────────────
   const svg = d3.select('#map-svg');
   let W = mapRoot.clientWidth, H = mapRoot.clientHeight;
   svg.attr('viewBox', `0 0 ${W} ${H}`);
   const mapGroup = svg.append('g').attr('id', 'mapGroup');
 
-  // ── Projection (centred on Malawi)
   const projection = d3.geoMercator()
     .center([34.3015, -13.2543])
     .scale(Math.min(W, H) * 6.5)
     .translate([W / 2, H / 2]);
   const path = d3.geoPath().projection(projection);
 
-  // ── Zoom
   const zoom = d3.zoom()
     .scaleExtent([1, 14])
     .on('zoom', e => mapGroup.attr('transform', e.transform));
   svg.call(zoom);
 
-  // ── State
-  let impactData = {};   // key: NORMALISED district name → { col: value, ... }
-  let geoData    = null;
+  // ─────────────────────────────────────────────
+  //  STATE
+  // ─────────────────────────────────────────────
+  let impactData  = {};   // NORMALISED district name → { col: value }
+  let geoData     = null;
   let districtSel = null;
   let labelSel    = null;
   let selectedId  = null;
@@ -514,14 +586,13 @@
 
     geoData = geo;
 
-    // Parse CSV
-    let totals = {};
+    // Parse CSV into impactData and running totals
+    const totals = {};
     IMPACT_COLUMNS.forEach(c => totals[c.key] = 0);
 
     csvRows.forEach(row => {
       const distKey = norm(row['District'] || row['DISTRICT'] || '');
       if (!distKey) return;
-
       const record = {};
       IMPACT_COLUMNS.forEach(c => {
         const raw = (row[c.key] || '0').toString().replace(/,/g, '').trim();
@@ -531,16 +602,13 @@
       impactData[distKey] = record;
     });
 
-    // ── Compute max per column for bar scaling
+    // Max value per column for proportional bar widths
     const maxVals = {};
     IMPACT_COLUMNS.forEach(c => {
       maxVals[c.key] = Math.max(...Object.values(impactData).map(d => d[c.key] || 0));
     });
 
-    // ── Render totals panel
     renderTotalsPanel(totals);
-
-    // ── Draw map
     drawMap(maxVals);
 
     loading.style.display = 'none';
@@ -564,8 +632,7 @@
           <span class="stat-dot" style="background:${col.color}"></span>
           ${col.label}
         </span>
-        <span class="stat-value">${fmt(totals[col.key])}</span>
-      `;
+        <span class="stat-value">${fmt(totals[col.key])}</span>`;
       body.appendChild(row);
     });
   }
@@ -588,50 +655,35 @@
 
     // Lakes
     mapGroup.append('g').attr('class', 'lakes')
-      .selectAll('path')
-      .data(lakes)
-      .enter()
-      .append('path')
-      .attr('class', 'lake')
-      .attr('d', path);
+      .selectAll('path').data(lakes).enter()
+      .append('path').attr('class', 'lake').attr('d', path);
 
     // Districts
     districtSel = mapGroup.append('g').attr('class', 'districts')
-      .selectAll('path')
-      .data(districts)
-      .enter()
+      .selectAll('path').data(districts).enter()
       .append('path')
       .attr('class', 'district')
       .attr('d', path)
       .attr('fill', d => districtFill(d))
       .on('mouseover', function (event, d) {
-        const id = distId(d);
-        if (selectedId && selectedId !== id) return; // don't highlight faded districts
-        if (selectedId !== id) {
-          d3.select(this).attr('fill', '#3CBFA9');
-        }
+        // Don't highlight faded districts when one is selected
+        if (selectedId && selectedId !== distId(d)) return;
+        if (selectedId !== distId(d)) d3.select(this).attr('fill', '#3CBFA9');
       })
       .on('mouseout', function (event, d) {
-        const id = distId(d);
-        if (selectedId !== id) {
-          d3.select(this).attr('fill', districtFill(d));
-        }
+        if (selectedId !== distId(d)) d3.select(this).attr('fill', districtFill(d));
       })
       .on('click', function (event, d) {
         event.stopPropagation();
-        const id = distId(d);
-        if (selectedId === id) {
-          resetView();
-        } else {
-          selectDistrict(d, this);
-        }
+        if (selectedId === distId(d)) resetView();
+        else selectDistrict(d);
       });
 
     // Labels
+    // — Districts WITH impact data → full title-case name (e.g. "Kasungu")
+    // — Districts WITHOUT impact  → abbreviation from DISTRICT_LABELS table above
     labelSel = mapGroup.append('g').attr('class', 'district-labels')
-      .selectAll('text')
-      .data(districts)
-      .enter()
+      .selectAll('text').data(districts).enter()
       .append('text')
       .attr('class', 'district-label')
       .attr('transform', d => {
@@ -640,56 +692,52 @@
       })
       .attr('dy', '0.35em')
       .text(d => {
-        const name = featName(d).trim();
-        return name.length > 7 ? name.substring(0, 3).toUpperCase() : name.toUpperCase();
+        const normName  = norm(featName(d));
+        const hasImpact = !!impactData[normName];
+        if (hasImpact) {
+          // Full title-case name for districts we've reached
+          return toTitleCase(featName(d));
+        }
+        // Short abbreviation for unreached districts
+        return DISTRICT_LABELS[normName] || normName.substring(0, 3);
       });
 
-    // Click on SVG background → reset
-    svg.on('click', (event) => {
+    // Click SVG background → reset
+    svg.on('click', event => {
       if (event.target.tagName.toLowerCase() === 'svg') resetView();
     });
 
-    // Resize handler
-    window.addEventListener('resize', () => {
-      W = mapRoot.clientWidth; H = mapRoot.clientHeight;
-      svg.attr('viewBox', `0 0 ${W} ${H}`);
-      projection.scale(Math.min(W, H) * 6.5).translate([W / 2, H / 2]);
-      svg.selectAll('path').attr('d', path);
-      labelSel.attr('transform', d => {
-        const [cx, cy] = path.centroid(d);
-        return `translate(${cx},${cy})`;
-      });
-    });
-
-    // ESC key
+    // ESC key → reset
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') resetView();
     });
 
-    // Pass maxVals to select for bars
+    // Window resize → reproject
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        W = mapRoot.clientWidth; H = mapRoot.clientHeight;
+        svg.attr('viewBox', `0 0 ${W} ${H}`);
+        projection.scale(Math.min(W, H) * 6.5).translate([W / 2, H / 2]);
+        svg.selectAll('path').attr('d', path);
+        labelSel.attr('transform', d => {
+          const [cx, cy] = path.centroid(d);
+          return `translate(${cx},${cy})`;
+        });
+      }, 250);
+    });
+
     window.__maxVals = maxVals;
-  }
-
-  // ─────────────────────────────────────────────
-  //  HELPERS
-  // ─────────────────────────────────────────────
-  function distId(d) {
-    const p = d.properties || {};
-    return p.id || p.NAME_1 || p.DISTRICT || p.name || JSON.stringify(p).slice(0, 40);
-  }
-
-  function districtFill(d) {
-    const key = norm(featName(d));
-    return impactData[key] ? '#6067AF' : '#d3d6d9';
   }
 
   // ─────────────────────────────────────────────
   //  SELECT DISTRICT
   // ─────────────────────────────────────────────
-  function selectDistrict(feat, el) {
+  function selectDistrict(feat) {
     selectedId = distId(feat);
 
-    // Dramatic zoom — same timing & offset as original reference
+    // Dramatic zoom (2400ms) — offset right to leave room for the panel
     const [[x0, y0], [x1, y1]] = path.bounds(feat);
     const dx = x1 - x0, dy = y1 - y0;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -702,7 +750,7 @@
       d3.zoomIdentity.translate(tx, ty).scale(scale)
     );
 
-    // Fade other districts, highlight selected
+    // Fade all other districts; highlight + raise selected
     districtSel
       .classed('faded',   d => distId(d) !== selectedId)
       .classed('focused', d => distId(d) === selectedId)
@@ -710,20 +758,15 @@
       .attr('fill', '#3CBFA9')
       .raise();
 
-    // Hide labels
+    // Hide labels and legend
     labelSel.classed('hidden', true);
+    legend.classList.add('hidden');
 
-    // Hide legend
-    document.getElementById('legend').classList.add('hidden');
-
-    // Update panels
+    // Populate and reveal district panel
     const rawName  = featName(feat);
     const normName = norm(rawName);
-    const data     = impactData[normName];
+    renderDistrictPanel(rawName, impactData[normName], window.__maxVals);
 
-    renderDistrictPanel(rawName, data, window.__maxVals);
-
-    // Toggle panel visibility
     totalPanel.classList.add('hidden');
     distPanel.classList.add('visible');
     escHint.classList.add('visible');
@@ -734,7 +777,6 @@
   // ─────────────────────────────────────────────
   function renderDistrictPanel(name, data, maxVals) {
     document.getElementById('district-panel-title').textContent = name || 'District';
-
     const body = document.getElementById('district-panel-body');
 
     if (!data) {
@@ -742,25 +784,26 @@
       body.innerHTML = `
         <div class="not-reached">
           <div class="nr-icon">🗺️</div>
-          <p><strong>Area not reached yet</strong>This district has not been part of the programme so far.</p>
+          <p>
+            <strong>Area not reached yet</strong>
+            This district has not been part of the programme so far.
+          </p>
         </div>`;
       return;
     }
 
     document.getElementById('district-panel-sub').textContent = 'Programme impact breakdown';
-
-    const totalReached = data['Young people Reached'] || 0;
     body.innerHTML = '';
 
     const bodyDiv = document.createElement('div');
     bodyDiv.className = 'panel-body';
 
-    IMPACT_COLUMNS.forEach((col, i) => {
-      const val  = data[col.key] || 0;
-      const max  = maxVals ? (maxVals[col.key] || 1) : 1;
-      const pct  = Math.round((val / max) * 100);
+    const barClasses = ['bar-navy', 'bar-purple', 'bar-teal', 'bar-purple', 'bar-teal'];
 
-      const barClass = i === 0 ? 'bar-navy' : i === 1 ? 'bar-purple' : i === 2 ? 'bar-teal' : 'bar-purple';
+    IMPACT_COLUMNS.forEach((col, i) => {
+      const val = data[col.key] || 0;
+      const max = maxVals ? (maxVals[col.key] || 1) : 1;
+      const pct = Math.round((val / max) * 100);
 
       const row = document.createElement('div');
       row.className = 'district-stat-row';
@@ -768,7 +811,7 @@
         <div class="district-stat-label">${col.label}</div>
         <div class="district-stat-value">${fmt(val)}</div>
         <div class="district-stat-bar-track">
-          <div class="district-stat-bar ${barClass}" style="width:${pct}%"></div>
+          <div class="district-stat-bar ${barClasses[i]}" style="width:${pct}%"></div>
         </div>`;
       bodyDiv.appendChild(row);
     });
@@ -782,6 +825,7 @@
   function resetView() {
     selectedId = null;
 
+    // Smooth zoom out (1800ms)
     svg.transition().duration(1800).call(zoom.transform, d3.zoomIdentity);
 
     // Restore all districts
@@ -790,12 +834,11 @@
       .classed('focused', false)
       .attr('fill', d => districtFill(d));
 
-    // Restore labels
+    // Restore labels and legend
     labelSel.classed('hidden', false);
+    legend.classList.remove('hidden');
 
-    // Restore legend
-    document.getElementById('legend').classList.remove('hidden');
-
+    // Swap panels
     totalPanel.classList.remove('hidden');
     distPanel.classList.remove('visible');
     escHint.classList.remove('visible');
